@@ -1,12 +1,26 @@
 #include <LiquidCrystal.h>
 #include <Servo.h>
+#include <SoftwareSerial.h>
+
+
+//Bluetooth
+SoftwareSerial mySerial(A3, A4); // RX, TX
+String command = "";
+
 
 //Servo motor
 Servo myservo;
 int servo = 6;
 
+
 //Button
 int button = 7;
+bool buttonPressed = false;
+unsigned long buttonTimePressed = 0;
+unsigned long buttonAction2Time = 1000;
+bool menu = false;
+bool gameRunning = false;
+int gameMode = 0;
 
 //Potentiometer
 int potentiometer = A5;
@@ -22,28 +36,20 @@ unsigned long deltaS = 0;
 bool firstS1 = false;
 bool firstS2 = false;
 bool calculatingOrigin = false;
-unsigned long firstSignal = 0;
-unsigned long timeToWaitAnotherCapture = 500000;
+unsigned long firstSignal = 0; //microseconds
+unsigned long timeToWaitAnotherCapture = 500000; //microseconds
+
 
 //Assyncronous timers that set the time each LED stays on
 unsigned long startT1 = 0;
-unsigned long deltaT1 = 3000;
+unsigned long deltaT1 = 1000;
 unsigned long startT2 = 0;
-unsigned long deltaT2 = 3000;
+unsigned long deltaT2 = 1000;
+
 
 //LCD display
 const int rs = 13, en = 12, d4 = 11, d5 = 10, d6 = 9, d7 = 8;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
-byte smiley[8] = {
-  B00000,
-  B10001,
-  B00000,
-  B00000,
-  B10001,
-  B01110,
-  B00000,
-};
-
 byte note[8] = {
   B00010,
   B00011,
@@ -62,7 +68,6 @@ byte note2[8] = {
   B11011,
   B11000,
 };
-
 byte delta[8] = {
   B00000,
   B00100,
@@ -72,6 +77,50 @@ byte delta[8] = {
   B10001,
   B11111,
 };
+byte arrow[8] = {
+  B00000,
+  B00000,
+  B01000,
+  B11111,
+  B01000,
+  B00000,
+  B00000,
+};
+
+void drawMode2(unsigned long deltaS, String firstSide) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("first: " + firstSide);
+  lcd.setCursor(0, 1);
+  lcd.write(byte(2));
+  lcd.print("=");
+  lcd.print(deltaS);
+  lcd.print(",");
+  lcd.setCursor(12, 1);
+  lcd.print("E-9s");
+}
+void drawSplashScreen() {
+  lcd.clear();
+  lcd.print("      Som  ");
+  lcd.setCursor(0, 1);
+  lcd.print(" ");
+  lcd.write(byte(1));
+  lcd.print(" Imaginario ");
+  lcd.write(byte(0));
+}
+void drawMenu(int option) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("mode 1");
+  if(option == 1) {
+    lcd.write(byte(3));
+  }
+  lcd.setCursor(0, 1);
+  lcd.print("mode2");
+  if(option == 2) {
+    lcd.write(byte(3));
+  }
+}
 
 
 void setup(){
@@ -93,31 +142,55 @@ void setup(){
   lcd.createChar(0, note);
   lcd.createChar(1, note2);
   lcd.createChar(2, delta);
+  lcd.createChar(3, arrow);
   lcd.begin(16, 2);
-  lcd.print("      Som  ");
-  lcd.setCursor(0, 1);
-  lcd.print(" ");
-  lcd.write(byte(1));
-  lcd.print(" Imaginario ");
-  lcd.write(byte(0));
+  drawSplashScreen();
 }
 
-void printDelta(unsigned long deltaS, String firstSide) {
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("first: " + firstSide);
-  lcd.setCursor(0, 1);
-  lcd.write(byte(2));
-  lcd.print("=");
-  lcd.print(deltaS);
-  lcd.print(",");
-  lcd.setCursor(12, 1);
-  lcd.print("E-9s");
+
+
+int showMenu() {
+  int buttonVal = digitalRead(button);
+  
+  while(buttonVal == HIGH){
+    buttonVal = digitalRead(button);
+  }
+  
+  int option = 1;
+  drawMenu(option);
+  
+  while(true) {
+    int buttonVal = digitalRead(button);
+
+    //First moment that the button is pressed
+    if(buttonVal == HIGH && !buttonPressed) {
+      buttonPressed = true;
+      buttonTimePressed = millis();
+    }
+    /*If the button is pressed for greater or equal than the time defined by buttonAction2Time, 
+    then the option selected is toggled*/
+    else if(buttonVal == HIGH && buttonPressed && (millis() - buttonTimePressed) >= buttonAction2Time) {
+      //change option
+      option = (option == 1)? 2 : 1;
+      buttonPressed = false;
+      buttonTimePressed = 0;
+      drawMenu(option);
+      delay(2000);
+    }
+    //If the button was pressed for less than buttonAction2Time, then the current option is selected
+    else if(buttonVal == LOW && buttonPressed) {
+      drawSplashScreen();
+      return option;
+    }
+    else if(buttonVal == LOW) {
+      buttonPressed = false;
+      buttonTimePressed = 0;  
+    }
+  }
 }
 
 void loop(){
   
-
   //Read sound signals
   int rightSensorVal = digitalRead(rightSensorPin);
   int leftSensorVal = digitalRead(leftSensorPin);
@@ -134,7 +207,7 @@ void loop(){
         calculatingOrigin = false;
         firstS1 = false;
         firstS2 = false;
-        printDelta(deltaS, "left");
+        drawMode2(deltaS, "left");
         deltaS = 12;
         unsigned long servoAngle = acos(((deltaS / 1000000L) * 343L) / 0.168L);
         //Convert angle from radians to degrees
@@ -168,7 +241,7 @@ void loop(){
         calculatingOrigin = false;
         firstS2 = false;
         firstS1 = false;
-        printDelta(deltaS, "right");
+        drawMode2(deltaS, "right");
         unsigned long servoAngle = acos(((deltaS / 1000000L) * 343L) / 0.168L);
         //Convert angle from radians to degrees
         servoAngle = servoAngle * 57296L / 1000L;
@@ -186,4 +259,14 @@ void loop(){
       digitalWrite (led2, LOW);
     }
   }
+
+
+  int buttonVal = digitalRead(button);
+  Serial.println(buttonVal);
+  if(buttonVal == HIGH && !gameRunning) {
+    gameMode = showMenu();
+    gameRunning = true;
+    menu = true;
+  }
+  
 }
