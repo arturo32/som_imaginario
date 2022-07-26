@@ -8,8 +8,8 @@ int servo = 6;
 //Sound sensors and theirs associated LEDs
 int led1 = 5;
 int led2 = 4;
-int sound_d1 = 2;
-int sound_d2 = 3;
+int rightSensorPin = 2;
+int leftSensorPin = 3;
 
 unsigned long deltaS = 0;
 bool firstS1 = false;
@@ -69,14 +69,14 @@ byte delta[8] = {
 
 void setup(){
   //Servo configuration
-  myservo.attach(servo);
+  //myservo.attach(servo);
 
   //Sound sensors configuration
   Serial.begin(9600);
   pinMode(led1, OUTPUT);
   pinMode(led2, OUTPUT);
-  pinMode(sound_d1, INPUT);  
-  pinMode(sound_d2, INPUT);  
+  pinMode(rightSensorPin, INPUT);  
+  pinMode(leftSensorPin, INPUT);  
 
   //Assyncronous timers for the LEDs activation
   startT1 = millis();
@@ -103,18 +103,20 @@ void printDelta(unsigned long deltaS, String firstSide) {
   lcd.write(byte(2));
   lcd.print("=");
   lcd.print(deltaS);
+  lcd.print(",");
+  lcd.setCursor(12, 1);
+  lcd.print("E-9s");
 }
 
 void loop(){
-  myservo.detach();
+  
 
   //Read sound signals
-  int val_digital1 = digitalRead(sound_d1);
-  int val_digital2 = digitalRead(sound_d2);
-  //Serial.println(val_digital2);
+  int rightSensorVal = digitalRead(rightSensorPin);
+  int leftSensorVal = digitalRead(leftSensorPin);
 
   if(!firstS1) {
-    if(val_digital1 == HIGH) {
+    if(rightSensorVal == HIGH) {
       if(!calculatingOrigin && (micros() - (firstSignal + deltaS) > timeToWaitAnotherCapture)){
         firstSignal = micros();
         firstS1 = true;
@@ -125,7 +127,13 @@ void loop(){
         calculatingOrigin = false;
         firstS1 = false;
         firstS2 = false;
-        printDelta(deltaS, "right");
+        printDelta(deltaS, "left");
+        unsigned long correctedDeltaS = (deltaS < 80)? deltaS : deltaS - 80L;
+        unsigned long servoAngle = acos(((correctedDeltaS / 1000000L) * 343L) / 0.0168);
+        myservo.attach(servo);
+        myservo.write(servoAngle);
+        delay(200);
+        myservo.detach();
       }
       
       startT1 = millis();
@@ -137,7 +145,7 @@ void loop(){
   }
 
   if(!firstS2){
-    if(val_digital2 == HIGH){
+    if(leftSensorVal == HIGH){
       if(!calculatingOrigin && (micros() - (firstSignal + deltaS) > timeToWaitAnotherCapture)){
         firstSignal = micros();
         calculatingOrigin = true;
@@ -148,7 +156,13 @@ void loop(){
         calculatingOrigin = false;
         firstS2 = false;
         firstS1 = false;
-        printDelta(deltaS, "left");
+        printDelta(deltaS, "right");
+        unsigned long correctedDeltaS = (deltaS < 80)? deltaS : deltaS - 80L;
+        unsigned long servoAngle = 180L - acos(((correctedDeltaS / 1000000L) * 343L) / 0.0168);
+        myservo.attach(servo);
+        myservo.write(servoAngle);
+        delay(200);
+        myservo.detach();
       }
       
       startT2 = millis();
@@ -159,20 +173,6 @@ void loop(){
     }
   }
 
-  
-
-  myservo.attach(servo);
-//  for (int pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
-//    myservo.write(pos);              // tell servo to go to position in variable 'pos'
-//    delay(30);                       // waits 15ms for the servo to reach the position
-//  }
-//  for (int pos = 180; pos >= 0; pos -= 1) { // goes from 180 degrees to 0 degrees
-//    myservo.write(pos);              // tell servo to go to position in variable 'pos'
-//    delay(30);                       // waits 15ms for the servo to reach the position
-//  }
-
-   //calculatingOrigin = (millis() - firstSignal) < timeToWaitAnotherCapture;
-   //Serial.println(calculatingOrigin);
 
   
 }
