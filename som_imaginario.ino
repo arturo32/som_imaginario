@@ -1,11 +1,11 @@
 #include <LiquidCrystal.h>
 #include <Servo.h>
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 
 
 //Bluetooth
-SoftwareSerial mySerial(A3, A4); // RX, TX
-String command = "";
+//SoftwareSerial mySerial(A3, A4); // RX, TX
+//String command = "";
 
 
 //Servo motor
@@ -18,9 +18,12 @@ int button = 7;
 bool buttonPressed = false;
 unsigned long buttonTimePressed = 0;
 unsigned long buttonAction2Time = 1000;
-bool menu = false;
 bool gameRunning = false;
 int gameMode = 0;
+bool startMode1 = false;
+String imaginaryFirstSide;
+unsigned long imaginaryDeltaS;
+
 
 //Potentiometer
 int potentiometer = A5;
@@ -116,7 +119,7 @@ void drawMenu(int option) {
     lcd.write(byte(3));
   }
   lcd.setCursor(0, 1);
-  lcd.print("mode2");
+  lcd.print("mode 2");
   if(option == 2) {
     lcd.write(byte(3));
   }
@@ -170,7 +173,6 @@ int showMenu() {
     /*If the button is pressed for greater or equal than the time defined by buttonAction2Time, 
     then the option selected is toggled*/
     else if(buttonVal == HIGH && buttonPressed && (millis() - buttonTimePressed) >= buttonAction2Time) {
-      //change option
       option = (option == 1)? 2 : 1;
       buttonPressed = false;
       buttonTimePressed = 0;
@@ -179,7 +181,12 @@ int showMenu() {
     }
     //If the button was pressed for less than buttonAction2Time, then the current option is selected
     else if(buttonVal == LOW && buttonPressed) {
-      drawSplashScreen();
+      //drawSplashScreen();
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("     mode ");
+      lcd.print(option);
+      startMode1 = (option == 1);
       return option;
     }
     else if(buttonVal == LOW) {
@@ -189,12 +196,11 @@ int showMenu() {
   }
 }
 
-void loop(){
-  
+void mode2() {
   //Read sound signals
   int rightSensorVal = digitalRead(rightSensorPin);
   int leftSensorVal = digitalRead(leftSensorPin);
-
+  
   if(!firstS1) {
     if(rightSensorVal == HIGH) {
       if(!calculatingOrigin && (micros() - (firstSignal + deltaS) > timeToWaitAnotherCapture)){
@@ -259,14 +265,59 @@ void loop(){
       digitalWrite (led2, LOW);
     }
   }
+}
 
+void mode1() {
+  if(startMode1) {
+    imaginaryFirstSide = (random(0, 2) == 0)? "left" : "right";
+    imaginaryDeltaS = random(0, 401);
+    drawMode2(imaginaryDeltaS, imaginaryFirstSide);
+    delay(2000);
+    startMode1 = false;
+  }
 
   int buttonVal = digitalRead(button);
-  Serial.println(buttonVal);
+  if(buttonVal == HIGH) {
+    int potentiometerVal = analogRead(potentiometer);
+//    unsigned long imaginaryAngle = acos(((imaginaryDeltaS / 1000000L) * 343L) / 0.168L);
+//    //Convert angle from radians to degrees
+//    imaginaryAngle = imaginaryAngle * 57296L / 1000L;
+//    if(imaginaryFirstSide == right) 
+      Serial.println(potentiometerVal);
+      Serial.println(imaginaryFirstSide);
+    if((potentiometerVal < 430) && (imaginaryFirstSide == "right")){
+      lcd.clear();
+      lcd.print("Correct!!!");
+      delay(3000);
+    }
+    else if((potentiometerVal > 430) && (imaginaryFirstSide == "left")){
+      lcd.clear();
+      lcd.print("Correct!!!");
+      delay(3000);
+    }
+    else {
+      lcd.clear();
+      lcd.print("Try again!");
+      delay(3000);
+    }
+
+      
+  }
+}
+
+
+void loop(){
+  if(gameMode == 2) {
+    mode2();
+  }
+  else if(gameMode == 1) {
+    mode1();
+  }
+  
+  int buttonVal = digitalRead(button);
   if(buttonVal == HIGH && !gameRunning) {
     gameMode = showMenu();
     gameRunning = true;
-    menu = true;
   }
   
 }
