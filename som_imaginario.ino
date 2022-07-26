@@ -16,7 +16,7 @@ bool firstS1 = false;
 bool firstS2 = false;
 bool calculatingOrigin = false;
 unsigned long firstSignal = 0;
-unsigned long timeToWaitAnotherCapture = 500;
+unsigned long timeToWaitAnotherCapture = 500000;
 
 //Assyncronous timers that set the time each LED stays on
 unsigned long startT1 = 0;
@@ -93,20 +93,20 @@ void loop(){
 
   if(!firstS1) {
     if(val_digital1 == HIGH) {
-      if(!calculatingOrigin){
-        firstSignal = millis();
+      if(!calculatingOrigin && (micros() - (firstSignal + deltaS) > timeToWaitAnotherCapture)){
+        firstSignal = micros();
         firstS1 = true;
         calculatingOrigin = true;
       }
-      else if(firstS2 && (millis() - (firstSignal + deltaS) > timeToWaitAnotherCapture)) {
-        deltaS = millis() - firstSignal;
+      else if(firstS2) {
+        deltaS = micros() - firstSignal;
         calculatingOrigin = false;
         firstS1 = false;
         firstS2 = false;
         Serial.println(deltaS);
       }
       
-      //startT1 = millis();
+      startT1 = millis();
       digitalWrite(led1, HIGH);
     }
     else if(millis() > (startT1 + deltaT1)){
@@ -116,13 +116,13 @@ void loop(){
 
   if(!firstS2){
     if(val_digital2 == HIGH){
-      if(!calculatingOrigin){
-        firstSignal = millis();
+      if(!calculatingOrigin && (micros() - (firstSignal + deltaS) > timeToWaitAnotherCapture)){
+        firstSignal = micros();
         calculatingOrigin = true;
         firstS2 = true;
       }
-      else if(firstS1 && (millis() - (firstSignal + deltaS) > timeToWaitAnotherCapture)) {
-        deltaS = millis() - firstSignal;
+      else if(firstS1) {
+        deltaS = micros() - firstSignal;
         calculatingOrigin = false;
         firstS2 = false;
         firstS1 = false;
