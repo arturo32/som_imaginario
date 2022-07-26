@@ -5,6 +5,13 @@
 Servo myservo;
 int servo = 6;
 
+//Button
+int button = 7;
+
+//Potentiometer
+int potentiometer = A5;
+
+
 //Sound sensors and theirs associated LEDs
 int led1 = 5;
 int led2 = 4;
@@ -68,8 +75,8 @@ byte delta[8] = {
 
 
 void setup(){
-  //Servo configuration
-  //myservo.attach(servo);
+  //Button configuration
+  pinMode(button, INPUT);
 
   //Sound sensors configuration
   Serial.begin(9600);
@@ -179,7 +186,4 @@ void loop(){
       digitalWrite (led2, LOW);
     }
   }
-
-
-  
 }
