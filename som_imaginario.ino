@@ -128,9 +128,14 @@ void loop(){
         firstS1 = false;
         firstS2 = false;
         printDelta(deltaS, "left");
-        unsigned long correctedDeltaS = (deltaS < 80)? deltaS : deltaS - 80L;
-        unsigned long servoAngle = acos(((correctedDeltaS / 1000000L) * 343L) / 0.0168);
+        deltaS = 12;
+        unsigned long servoAngle = acos(((deltaS / 1000000L) * 343L) / 0.168L);
+        //Convert angle from radians to degrees
+        servoAngle = servoAngle * 57296L / 1000L;
+        Serial.println(deltaS / 1000000L);
+        Serial.println(servoAngle);
         myservo.attach(servo);
+        //Convert angle from radians to degrees
         myservo.write(servoAngle);
         delay(200);
         myservo.detach();
@@ -157,10 +162,12 @@ void loop(){
         firstS2 = false;
         firstS1 = false;
         printDelta(deltaS, "right");
-        unsigned long correctedDeltaS = (deltaS < 80)? deltaS : deltaS - 80L;
-        unsigned long servoAngle = 180L - acos(((correctedDeltaS / 1000000L) * 343L) / 0.0168);
+        unsigned long servoAngle = acos(((deltaS / 1000000L) * 343L) / 0.168L);
+        //Convert angle from radians to degrees
+        servoAngle = servoAngle * 57296L / 1000L;
+        Serial.println(servoAngle);
         myservo.attach(servo);
-        myservo.write(servoAngle);
+        myservo.write(180L - servoAngle);
         delay(200);
         myservo.detach();
       }
