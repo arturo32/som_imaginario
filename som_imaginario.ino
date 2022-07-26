@@ -56,6 +56,17 @@ byte note2[8] = {
   B11000,
 };
 
+byte delta[8] = {
+  B00000,
+  B00100,
+  B00100,
+  B01010,
+  B01010,
+  B10001,
+  B11111,
+};
+
+
 void setup(){
   //Servo configuration
   myservo.attach(servo);
@@ -74,6 +85,7 @@ void setup(){
   //LCD writing and configuration
   lcd.createChar(0, note);
   lcd.createChar(1, note2);
+  lcd.createChar(2, delta);
   lcd.begin(16, 2);
   lcd.print("      Som  ");
   lcd.setCursor(0, 1);
@@ -81,6 +93,16 @@ void setup(){
   lcd.write(byte(1));
   lcd.print(" Imaginario ");
   lcd.write(byte(0));
+}
+
+void printDelta(unsigned long deltaS, String firstSide) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("first: " + firstSide);
+  lcd.setCursor(0, 1);
+  lcd.write(byte(2));
+  lcd.print("=");
+  lcd.print(deltaS);
 }
 
 void loop(){
@@ -103,7 +125,7 @@ void loop(){
         calculatingOrigin = false;
         firstS1 = false;
         firstS2 = false;
-        Serial.println(deltaS);
+        printDelta(deltaS, "right");
       }
       
       startT1 = millis();
@@ -126,7 +148,7 @@ void loop(){
         calculatingOrigin = false;
         firstS2 = false;
         firstS1 = false;
-        Serial.println(deltaS);
+        printDelta(deltaS, "left");
       }
       
       startT2 = millis();
